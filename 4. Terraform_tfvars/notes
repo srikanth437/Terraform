@@ -1,0 +1,41 @@
+1. default values inside variables.tf
+2. terraform.tfvars
+3. command line
+4. env variables
+
+
+Priority order
+--------------
+1. command line
+2. tfvars
+3. env variables -> export TF_VAR_VAR_NAME="value"  (unset the environment variables: unset TF_VAR_VAR_NAME="value")
+4. default values
+
+
+sample structure of tfvars files in terrafrom 
+-----------------------------------------------
+
+terraform/
+│
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── providers.tf
+│
+├── dev.tfvars
+├── qa.tfvars
+├── prod.tfvars
+│
+└── modules/
+    ├── network/
+    ├── vm/
+    └── aks/
+
+
+how to excute this files in real time specifically traget by using the terrafrom command
+------------------------------------------------------------------------------------------
+
+terraform plan -var-file="dev.tfvars"
+terraform plan -var-file="qa.tfvars"
+terraform plan -var-file="uat.tfvars"
+terraform plan -var-file="prod.tfvars"
