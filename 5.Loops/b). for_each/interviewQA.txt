@@ -1,0 +1,56 @@
+Frequently Asked Interview Questions (8 Years Experience)
+Q1. Difference between count and for_each?
+
+Expected answer:
+
+count uses index
+for_each uses key
+for_each provides stable resource tracking
+preferred in production
+Q2. Why does Terraform recommend for_each over count?
+
+Because resource addresses remain stable and prevent unnecessary recreation.
+
+Q3. What data types are supported by for_each?
+Map
+Set of Strings
+Q4. What is each.key?
+
+Current resource key.
+
+Q5. What is each.value?
+
+Current resource value.
+
+Q6. Can for_each use list?
+
+No. Convert list to set:
+
+toset(list)
+Q7. Can we use for_each in modules?
+
+Yes.
+
+Q8. What happens if a key changes?
+
+Terraform destroys old resource and creates new one.
+
+Q9. How does Terraform store for_each resources in state?
+resource["key"]
+Q10. What is a real-world example from your project?
+
+A strong answer:
+
+"In our automotive FOTA platform, we used for_each to provision environment-specific resources such as IAM roles, security groups, Azure resource groups, and Kubernetes namespaces. Each environment (dev, qa, stage, prod) had different configurations stored in maps, and for_each ensured stable state management without resource recreation when environments were added or removed."
+
+If you're targeting senior DevOps/Terraform interviews, focus heavily on:
+
+for_each vs count
+State management
+Resource addressing
+Module iteration
+State migration (terraform state mv)
+Dynamic blocks + for_each
+Complex object maps
+
+These are the areas where interviewers typically probe candidates claiming 7–8 years of experience.

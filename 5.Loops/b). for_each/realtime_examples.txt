@@ -1,0 +1,111 @@
+count vs for_each
+Feature	               count	for_each
+Uses                   Index	Yes	No
+Uses Keys	              No	Yes
+Stable Resource     Tracking	No	Yes
+Best For	         Identical resources	Unique resources
+Production Usage	    Less	More
+
+Interview answer:
+
+Use count when resources are identical. Use for_each when each resource has unique configuration and must be tracked independently.
+-------------------------------------------------------------------------------------
+Real-Time Usage #1: Multiple EC2 Instances
+
+variable "instances" {
+  default = {
+    dev = "t2.micro"
+    qa  = "t2.small"
+    prod = "t3.medium"
+  }
+}
+
+resource "aws_instance" "server" {
+  for_each = var.instances
+
+  ami           = "ami-123456"
+  instance_type = each.value
+
+  tags = {
+    Name = each.key
+  }
+}
+
+Creates:
+
+dev EC2
+qa EC2
+prod EC2
+----------------------------------------------------------------------------------
+
+Real-Time Usage #2: Security Groups
+
+variable "security_groups" {
+  default = {
+    web = 80
+    app = 8080
+    db  = 3306
+  }
+}
+
+resource "aws_security_group" "sg" {
+  for_each = var.security_groups
+
+  name = "${each.key}-sg"
+}
+
+Production teams commonly create SGs dynamically from maps.
+
+
+-------------------------------------------------------------------
+
+Real-Time Usage #3: IAM Users
+variable "users" {
+  default = [
+    "john",
+    "smith",
+    "david"
+  ]
+}
+
+resource "aws_iam_user" "user" {
+  for_each = toset(var.users)
+
+  name = each.key
+}
+
+Creates IAM users automatically.
+------------------------------------------------------------------------------------
+
+Real-Time Usage #4: S3 Buckets
+
+variable "buckets" {
+  default = {
+    logs = "private"
+    backup = "private"
+    artifacts = "public-read"
+  }
+}
+
+resource "aws_s3_bucket" "bucket" {
+  for_each = var.buckets
+
+  bucket = each.key
+}
+Real-Time Usage #5: Terraform Modules
+
+This is very common in enterprises.
+
+module "ec2" {
+  source = "./modules/ec2"
+
+  for_each = var.environments
+
+  env = each.key
+}
+
+Creates:
+
+module.ec2["dev"]
+module.ec2["qa"]
+module.ec2["prod"]
