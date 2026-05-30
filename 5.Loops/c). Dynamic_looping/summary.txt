@@ -1,0 +1,245 @@
+Dynamic blocks in Terraform are used when you need to generate nested blocks dynamically inside a resource.
+
+A common interview question is:
+
+What is the difference between for_each and dynamic blocks?
+
+Answer:
+
+for_each creates multiple resources.
+dynamic creates multiple nested blocks within a resource.
+
+
+Real-Time Example: Security Group Ingress Rules
+
+Without dynamic block:
+
+resource "aws_security_group" "sg" {
+  name = "allow-traffic"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+This becomes difficult when ports change frequently.
+
+Using Dynamic Block
+variable.tf
+variable "ingress_rules" {
+  default = [
+    {
+      port        = 22
+      description = "SSH"
+    },
+    {
+      port        = 80
+      description = "HTTP"
+    },
+    {
+      port        = 443
+      description = "HTTPS"
+    }
+  ]
+}
+ec2.tf
+resource "aws_security_group" "sg" {
+  name = "allow-traffic"
+
+  dynamic "ingress" {
+    for_each = var.ingress_rules
+
+    content {
+      from_port   = ingress.value.port
+      to_port     = ingress.value.port
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = ingress.value.description
+    }
+  }
+}
+
+Terraform automatically creates 3 ingress blocks.
+
+How Dynamic Works
+dynamic "ingress" {
+  for_each = var.ingress_rules
+
+  content {
+      ...
+  }
+}
+
+Components:
+
+dynamic
+dynamic "ingress"
+
+Tells Terraform to generate ingress blocks.
+
+for_each
+for_each = var.ingress_rules
+
+Loops through each item.
+
+content
+content {
+}
+
+Defines the actual ingress block.
+
+Dynamic Block with Object
+variable "ingress_rules" {
+  default = [
+    {
+      port        = 22
+      protocol    = "tcp"
+      cidr        = "0.0.0.0/0"
+      description = "SSH"
+    },
+    {
+      port        = 80
+      protocol    = "tcp"
+      cidr        = "0.0.0.0/0"
+      description = "HTTP"
+    }
+  ]
+}
+dynamic "ingress" {
+  for_each = var.ingress_rules
+
+  content {
+    from_port   = ingress.value.port
+    to_port     = ingress.value.port
+    protocol    = ingress.value.protocol
+    cidr_blocks = [ingress.value.cidr]
+    description = ingress.value.description
+  }
+}
+Dynamic Egress Block
+dynamic "egress" {
+  for_each = var.egress_rules
+
+  content {
+    from_port   = egress.value.port
+    to_port     = egress.value.port
+    protocol    = egress.value.protocol
+    cidr_blocks = egress.value.cidr_blocks
+  }
+}
+Dynamic Block + for_each Together
+
+Very common in enterprise projects.
+
+resource "aws_security_group" "sg" {
+
+  for_each = var.security_groups
+
+  name = each.key
+
+  dynamic "ingress" {
+    for_each = each.value.ingress_rules
+
+    content {
+      from_port = ingress.value.port
+      to_port   = ingress.value.port
+      protocol  = "tcp"
+      cidr_blocks = ingress.value.cidr_blocks
+    }
+  }
+}
+
+Creates:
+
+Multiple Security Groups
+Multiple ingress rules inside each SG
+
+
+Interview Question (4-8 Years)
+Q1: Why use dynamic blocks?
+
+To generate repeated nested blocks without duplicating code.
+
+Q2: Difference between for_each and dynamic?
+for_each  -> Multiple resources
+dynamic   -> Multiple nested blocks
+
+Example:
+
+resource "aws_instance" "server" {
+  for_each = var.servers
+}
+
+Creates multiple EC2s.
+
+dynamic "ingress" {
+}
+
+Creates multiple ingress blocks.
+
+Q3: Can dynamic block be used without for_each?
+
+No.
+
+Dynamic requires:
+
+for_each
+
+to iterate.
+
+Q4: Can dynamic block create resources?
+
+No.
+
+It can only create nested blocks.
+
+Wrong:
+
+dynamic "aws_instance" {
+}
+
+Not supported.
+
+Q5: Real-time project usage?
+
+A strong interview answer:
+
+"In our project, Security Groups were standardized through variables. Instead of hardcoding ingress blocks, we passed a list of ports and CIDRs and used dynamic blocks to generate ingress and egress rules. This reduced code duplication and allowed environment-specific network rules to be managed through tfvars files."
+
+Senior-Level Interview Question
+
+Given:
+
+ports = [22,80,443]
+
+Create ingress rules dynamically.
+
+Solution:
+
+dynamic "ingress" {
+  for_each = var.ports
+
+  content {
+    from_port   = ingress.value
+    to_port     = ingress.value
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
