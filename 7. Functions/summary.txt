@@ -1,0 +1,279 @@
+Why Functions Are Important
+
+Functions make Terraform code:
+
+Dynamic
+Reusable
+Environment-independent
+Less hardcoded
+Easier to maintain
+
+Without functions, you end up with hundreds of hardcoded values.
+
+--------------------------------------------------------------------------------------------------------------------------------
+
+Real-Time Scenario 1: Different EC2 Sizes for Different Environments
+====================================================================
+Requirement
+Dev → t2.micro
+QA → t2.small
+Prod → t3.large
+Solution
+variable "instance_types" {
+  default = {
+    dev  = "t2.micro"
+    qa   = "t2.small"
+    prod = "t3.large"
+  }
+}
+
+instance_type = lookup(
+  var.instance_types,
+  var.environment
+)
+Function Used
+lookup()
+Interview Question
+
+Why use lookup instead of if/else?
+
+Answer:
+
+Cleaner code
+Easy to add new environments
+Better scalability
+Real-Time Scenario 2: Common Resource Tags
+
+Most companies enforce tagging.
+
+Required tags:
+
+Environment=Dev
+Owner=DevOps
+Project=Roboshop
+
+Additional resource tag:
+
+Name=WebServer
+Solution
+tags = merge(
+  var.common_tags,
+  {
+    Name = "WebServer"
+  }
+)
+Function Used
+merge()
+Interview Question
+
+How do you manage organization-wide tags?
+
+Answer:
+
+We maintain common tags in a map variable and use merge() to combine them with resource-specific tags.
+
+Real-Time Scenario 3: Latest AMI Deployment
+
+Companies refresh AMIs regularly.
+
+Solution
+data "aws_ami" "latest" {
+  ...
+}
+
+ami = data.aws_ami.latest.id
+
+Create dynamic name:
+
+tags = {
+  Name = format(
+    "%s-%s",
+    var.environment,
+    "webserver"
+  )
+}
+Function Used
+format()
+
+Output:
+
+dev-webserver
+prod-webserver
+Real-Time Scenario 4: Dynamic User Data Scripts
+
+Store script separately.
+
+user_data = file("install-nginx.sh")
+Function Used
+file()
+Interview Question
+
+Why use file() instead of embedding scripts?
+
+Answer:
+
+Cleaner code
+Easier maintenance
+Separate infrastructure from scripts
+Real-Time Scenario 5: IAM Policy Creation
+
+Without function:
+
+policy = <<EOF
+{
+ ...
+}
+EOF
+
+Better:
+
+policy = jsonencode({
+  Version = "2012-10-17"
+  Statement = [...]
+})
+Function Used
+jsonencode()
+Interview Question
+
+Why use jsonencode()?
+
+Answer:
+
+Avoids JSON syntax mistakes
+Easier to generate dynamic policies
+Real-Time Scenario 6: Dynamic Subnet Creation
+
+VPC CIDR:
+
+10.0.0.0/16
+
+Need multiple subnets.
+
+cidrsubnet(
+  "10.0.0.0/16",
+  8,
+  1
+)
+
+Output:
+
+10.0.1.0/24
+Function Used
+cidrsubnet()
+Interview Question
+
+How do you dynamically generate subnet CIDRs?
+
+Answer:
+
+Using cidrsubnet().
+
+This is a favorite networking-related Terraform interview question.
+
+Real-Time Scenario 7: Multi-AZ Deployment
+
+Fetch AZs:
+
+data "aws_availability_zones" "available" {}
+
+Use first AZ:
+
+availability_zone =
+element(
+  data.aws_availability_zones.available.names,
+  0
+)
+Function Used
+element()
+Real-Time Scenario 8: Kubernetes Secrets
+
+Need Base64 encoding.
+
+base64encode("mypassword")
+Function Used
+base64encode()
+
+Common with:
+
+Kubernetes Secrets
+EC2 user_data
+Real-Time Scenario 9: Environment Validation
+contains(
+  ["dev","qa","prod"],
+  var.environment
+)
+Function Used
+contains()
+
+Prevent invalid environment values.
+
+-------------------------------------------------------------------------------------------------------------------
+
+
+Top Interview Questions
+============================
+Q1
+
+What is the purpose of Terraform functions?
+
+Answer:
+
+Functions help transform, manipulate, validate, and dynamically generate values during Terraform execution.
+
+Q2
+
+Which function do you use most frequently?
+
+A strong answer:
+
+In my projects I frequently use lookup(), merge(), file(), jsonencode(), format(), and cidrsubnet().
+
+Q3
+
+How do you create dynamic tags?
+
+merge()
+Q4
+
+How do you generate subnet CIDRs?
+
+cidrsubnet()
+
+Q5
+
+How do you read a shell script from a file?
+
+file()
+
+Q6
+
+How do you create dynamic IAM policies?
+
+jsonencode()
+
+Q7
+
+How do you select instance type based on environment?
+
+lookup()
+
+
+Q8 (Scenario-Based)
+
+Interviewer: Your company has Dev, QA, Stage, and Prod. Each environment needs a different instance type. How will you avoid hardcoding?
+
+Answer:
+
+variable "instance_types" {
+  default = {
+    dev   = "t2.micro"
+    qa    = "t2.small"
+    stage = "t3.medium"
+    prod  = "t3.large"
+  }
+}
+
+instance_type = lookup(
+  var.instance_types,
+  var.environment
+)
