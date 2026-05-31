@@ -1,0 +1,199 @@
+What is a Data Source in Terraform?
+
+A Data Source is used to read or fetch information from existing infrastructure without creating or modifying it.
+
+Think of it this way:
+
+resource → Creates something.
+data source → Reads something that already exists.
+
+Example:
+
+data "aws_vpc" "existing" {
+  default = true
+}
+
+Terraform fetches details of an existing VPC but doesn't create a new one.
+
+-----------------------------------------------------------------------------------------------------------------------
+
+Most Common AWS Data Sources :
+===============================================
+Data Source	                  Usage
+aws_ami	                   Fetch latest AMI
+aws_vpc	                   Fetch VPC
+aws_subnet	               Fetch subnet
+aws_security_group	       Fetch SG
+aws_iam_role	           Fetch IAM role
+aws_route53_zone	       Fetch DNS zone
+aws_availability_zones	   Fetch AZs
+aws_caller_identity        Fetch account details
+aws_region	               Fetch current region
+
+
+-------------------------------------------------------------------------------------------------------------------------
+
+
+Why do we use Data Sources?
+
+In real projects, not everything is created by your Terraform code.
+
+Often:
+
+Network team creates VPCs.
+Security team creates IAM roles.
+Platform team creates AMIs.
+DevOps team creates applications.
+
+Your Terraform needs to fetch these existing resources and use them.
+
+This is where Data Sources become important.
+
+Real-Time Scenario 1: Fetch Latest AMI
+
+Instead of hardcoding AMI IDs:
+
+❌ Bad
+
+ami = "ami-123456"
+
+AMI may become outdated.
+
+✅ Good
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/*"]
+  }
+
+  owners = ["amazon"]
+}
+resource "aws_instance" "server" {
+  ami = data.aws_ami.ubuntu.id
+}
+
+Benefit:
+
+Always uses the latest approved AMI.
+Real-Time Scenario 2: Existing VPC
+
+Network team already created VPC.
+
+data "aws_vpc" "main" {
+  filter {
+    name   = "tag:Name"
+    values = ["prod-vpc"]
+  }
+}
+resource "aws_subnet" "app" {
+  vpc_id = data.aws_vpc.main.id
+}
+Real-Time Scenario 3: Existing Security Group
+data "aws_security_group" "web" {
+  name = "web-sg"
+}
+
+Attach it to EC2:
+
+vpc_security_group_ids = [
+  data.aws_security_group.web.id
+]
+Real-Time Scenario 4: Existing Route53 Hosted Zone
+data "aws_route53_zone" "main" {
+  name = "company.com"
+}
+
+Create records:
+
+resource "aws_route53_record" "app" {
+  zone_id = data.aws_route53_zone.main.zone_id
+}
+Real-Time Scenario 5: Existing IAM Role
+data "aws_iam_role" "ec2_role" {
+  name = "EC2AdminRole"
+}
+
+Attach role to EC2.
+
+---------------------------------------------------------------------------------------------------------------------------
+
+Frequently Asked Interview Questions
+====================================
+1. What is the difference between Resource and Data Source?
+
+Answer:
+
+Resource creates/manages infrastructure.
+
+resource "aws_instance" "web" {}
+
+Data Source only reads existing infrastructure.
+
+data "aws_vpc" "main" {}
+
+
+2. Why use Data Sources instead of hardcoding values?
+
+Because:
+
+IDs change.
+AMIs change.
+Resources differ across environments.
+Code becomes reusable.
+3. What happens if a Data Source resource does not exist?
+
+Terraform fails during:
+
+terraform plan
+
+Error example:
+
+No matching VPC found
+4. How do you get the current AWS Account ID?
+data "aws_caller_identity" "current" {}
+output "account_id" {
+  value = data.aws_caller_identity.current.account_id
+}
+
+Very common interview question.
+
+5. How do you fetch the current AWS Region?
+data "aws_region" "current" {}
+output "region" {
+  value = data.aws_region.current.name
+}
+6. How do you fetch all Availability Zones?
+data "aws_availability_zones" "available" {}
+output "azs" {
+  value = data.aws_availability_zones.available.names
+}
+7. Can a Data Source depend on a Resource?
+
+Yes.
+
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+}
+
+data "aws_vpc" "lookup" {
+  id = aws_vpc.main.id
+}
+
+Though in practice, directly referencing the resource is usually better.
+
+8. Explain a real project use case of Data Sources.
+
+A strong interview answer:
+
+In my project, the networking team managed VPCs and subnets separately. While provisioning EC2 instances using Terraform, we used aws_vpc and aws_subnet data sources to dynamically fetch existing network resources instead of hardcoding IDs. We also used aws_ami data source to always deploy instances with the latest approved golden image.
+
+Scenario-Based Interview Question
+
+Interviewer: "Your company creates a new AMI every week. How will you ensure Terraform always uses the latest AMI?"
+
+Answer:
+
+Use the aws_ami data source with most_recent = true and proper filters. This automatically fetches the latest AMI during terraform plan and apply.
