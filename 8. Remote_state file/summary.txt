@@ -1,0 +1,181 @@
+ I wanted to implement 3 secure options for state file 
+ 1. users can't access the state file except terraform (users can't delete and update file ) 
+ 2. i wanted to enable versioning 
+ 3. I wanted to store another backup file for state file (replica of state file in another s3).
+
+---------------------------------------------------------------------------------------------------------------------------
+ 1. Prevent Users from Updating or Deleting State Files
+
+The goal is:
+
+✅ Terraform can read/write state
+
+✅ Users can view bucket configuration if needed
+
+Approach A: Dedicated Terraform IAM Role
+
+Create a role:
+
+terraform-backend-role
+
+Only your CI/CD pipeline or Terraform execution role assumes this role.
+
+Bucket policy:
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowTerraformRole",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::123456789012:role/terraform-backend-role"
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::company-terraform-state/*"
+    }
+  ]
+}
+Approach B: Enable Object Lock (Most Secure)
+
+S3 Object Lock prevents:
+
+Delete
+Overwrite
+Modification
+
+Even administrators cannot remove the object until retention expires.
+
+resource "aws_s3_bucket" "tfstate" {
+  bucket              = "company-terraform-state"
+  object_lock_enabled = true
+}
+
+Retention example:
+
+resource "aws_s3_bucket_object_lock_configuration" "lock" {
+  bucket = aws_s3_bucket.tfstate.id
+
+  rule {
+    default_retention {
+      mode = "GOVERNANCE"
+      days = 30
+    }
+  }
+}
+
+Production banks and financial institutions often use Object Lock.
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+2. Enable Versioning
+
+This is mandatory for Terraform state.
+
+If someone corrupts state:
+
+Version 10 -> Good
+Version 11 -> Corrupted
+
+You can restore Version 10.
+
+Terraform:
+
+resource "aws_s3_bucket_versioning" "tfstate" {
+  bucket = aws_s3_bucket.tfstate.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+AWS Console:
+
+S3
+ → Bucket
+   → Properties
+      → Versioning
+         → Enable
+
+Result:
+
+terraform.tfstate
+├── Version 1
+├── Version 2
+├── Version 3
+└── Current Version
+
+--------------------------------------------------------------------------------------------------------------------------
+
+
+3. Maintain a Replica in Another Bucket
+
+This is called Cross-Region Replication (CRR).
+
+Example:
+
+Primary:
+
+company-terraform-state
+ap-south-1 (Mumbai)
+
+Replica:
+
+company-terraform-state-dr
+ap-southeast-1 (Singapore)
+
+AWS automatically copies:
+
+terraform.tfstate
+
+to
+
+terraform.tfstate
+
+in Singapore.
+
+Architecture
+Terraform
+    |
+    v
+Primary Bucket (Mumbai)
+    |
+    v
+Replication Rule
+    |
+    v
+Replica Bucket (Singapore)
+
+Terraform example:
+
+resource "aws_s3_bucket_replication_configuration" "replication" {
+  role   = aws_iam_role.replication.arn
+  bucket = aws_s3_bucket.primary.id
+
+  rule {
+    status = "Enabled"
+
+    destination {
+      bucket = aws_s3_bucket.replica.arn
+    }
+  }
+}
+
+Prerequisites:
+
+Versioning enabled on source bucket
+Versioning enabled on destination bucket
+Replication IAM role
+----------------------------------------------------------------------------------------------------------------------
+
+Production-Grade Design
+S3 Bucket
+├── Versioning Enabled
+├── Object Lock Enabled
+├── KMS Encryption Enabled
+├── Block Public Access Enabled
+├── Cross Region Replication Enabled
+└── Access only through Terraform IAM Role
