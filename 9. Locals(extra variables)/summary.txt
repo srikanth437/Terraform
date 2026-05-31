@@ -1,0 +1,259 @@
+Folder Structure in Enterprise Projects
+terraform/
+│
+├── main.tf
+├── variables.tf
+├── locals.tf
+├── outputs.tf
+├── provider.tf
+├── backend.tf
+│
+├── dev.tfvars
+├── qa.tfvars
+└── prod.tfvars
+
+
+What is locals.tf?
+
+A local value is a named expression that Terraform evaluates once and reuses throughout the configuration.
+
+Example:
+
+locals {
+  environment = "dev"
+  project     = "fota"
+
+  common_tags = {
+    Environment = local.environment
+    Project     = local.project
+    ManagedBy   = "Terraform"
+  }
+}
+
+Usage:
+
+resource "aws_instance" "web" {
+  tags = local.common_tags
+}
+
+-----------------------------------------------------------------------------------------------------------------
+For a DevOps engineer with 2–5 years of Terraform experience, the most common real-world uses of locals.tf are:
+
+1. Common tags
+2. Naming conventions
+3. Environment-specific mappings
+4. Conditional values
+5. Resource prefixes
+6. CIDR and subnet calculations
+
+
+----------------------------------------------------------------------------------------------------------
+
+Interview Questions
+Q1. What is the purpose of locals in Terraform?
+
+Answer:
+Locals are used to store reusable values and expressions within a Terraform configuration. They help eliminate duplicate code and improve maintainability.
+
+Q2. Difference between variable and local?
+
+Answer:
+
+Variable:
+
+External input
+Can be overridden
+
+Local:
+
+Internal value
+Cannot be overridden
+Used for calculations and reuse
+Q3. Can a local reference another local?
+
+Yes.
+
+locals {
+  env    = "dev"
+  prefix = "${local.env}-fota"
+}
+Q4. Can a local reference a variable?
+
+Yes.
+
+locals {
+  instance_name = "${var.environment}-server"
+}
+Q5. Can a variable reference a local?
+
+No.
+
+This is a favorite interview question.
+
+❌ Invalid:
+
+variable "name" {
+  default = local.prefix
+}
+
+Terraform evaluation order does not allow this.
+
+Q6. Why use locals instead of hardcoding values?
+Centralized configuration
+Easier maintenance
+Consistent naming
+Reduced duplication
+Better readability
+Q7. How are locals evaluated?
+
+Terraform evaluates locals once during the planning phase and reuses the calculated value throughout the configuration.
+
+Scenario-Based Interview Question
+
+Interviewer:
+"We have 50 AWS resources and every resource requires the same tags. How would you avoid repeating the tags block?"
+
+Expected Answer:
+
+locals {
+  common_tags = {
+    Environment = var.environment
+    Project     = "fota"
+    ManagedBy   = "Terraform"
+  }
+}
+
+Use:
+
+tags = local.common_tags
+
+This is exactly how most enterprise Terraform codebases are structured.
+
+-------------------------------------------------------------------------------------------------------------------------------
+
+Real-Time Scenario 1: Common Tags
+
+Without locals:
+
+resource "aws_vpc" "vpc" {
+  tags = {
+    Environment = "dev"
+    Project     = "fota"
+  }
+}
+
+resource "aws_subnet" "subnet" {
+  tags = {
+    Environment = "dev"
+    Project     = "fota"
+  }
+}
+
+Repeated everywhere.
+
+With locals:
+
+locals {
+  common_tags = {
+    Environment = "dev"
+    Project     = "fota"
+  }
+}
+
+Use:
+
+tags = local.common_tags
+Real-Time Scenario 2: Naming Convention
+
+Most companies enforce naming standards.
+
+Requirement:
+
+dev-fota-vpc
+dev-fota-ec2
+dev-fota-s3
+
+locals.tf:
+
+locals {
+  env     = var.environment
+  project = "fota"
+
+  prefix = "${local.env}-${local.project}"
+}
+
+Usage:
+
+resource "aws_vpc" "main" {
+  tags = {
+    Name = "${local.prefix}-vpc"
+  }
+}
+
+Output:
+
+dev-fota-vpc
+Real-Time Scenario 3: Environment-Based Configuration
+
+Suppose:
+
+Dev  -> t3.micro
+QA   -> t3.small
+Prod -> t3.large
+
+locals.tf:
+
+locals {
+  instance_type = {
+    dev  = "t3.micro"
+    qa   = "t3.small"
+    prod = "t3.large"
+  }
+}
+
+Usage:
+
+instance_type = local.instance_type[var.environment]
+
+Output:
+
+dev  -> t3.micro
+prod -> t3.large
+Real-Time Scenario 4: Dynamic S3 Backend Keys
+locals {
+  state_key = "${var.environment}/network/terraform.tfstate"
+}
+
+Output:
+
+dev/network/terraform.tfstate
+qa/network/terraform.tfstate
+prod/network/terraform.tfstate
+Real-Time Scenario 5: Conditional Logic
+
+Requirement:
+
+Prod = Multi-AZ
+Dev = Single AZ
+
+locals.tf:
+
+locals {
+  multi_az = var.environment == "prod" ? true : false
+}
+
+Usage:
+
+multi_az = local.multi_az
+Real-Time Scenario 6: Reusing CIDR Blocks
+locals {
+  cidr_blocks = {
+    dev  = "10.0.0.0/16"
+    qa   = "10.1.0.0/16"
+    prod = "10.2.0.0/16"
+  }
+}
+
+Usage:
+
+cidr_block = local.cidr_blocks[var.environment]
