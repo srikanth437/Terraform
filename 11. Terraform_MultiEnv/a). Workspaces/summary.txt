@@ -1,0 +1,64 @@
+## terraform.workspace is special variable in workspace concepts.
+
+if terraform.workspace = dev  # it should be dev environment
+if terraform.workspace = prod  # it should be prod environment
+if terraform.workspace = uat  # it should be uat environment
+if terraform.workspace = pre-prod   # it should be pre-prod environment
+
+Essential Workspace Commands
+============================
+
+terraform workspace new <name>: Create a new environment.
+terraform workspace select <name>: Switch to an environment.
+terraform workspace list: View all existing environments.
+terraform workspace show: See the currently active environment.
+
+
+Importance of Workspaces
+========================
+1. Code Reuse: 
+Run the identical Terraform configuration multiple times without copying files.
+
+2. Cost Efficiency: 
+Spin up temporary, identical environments for testing and destroy them easily.
+
+3. Risk Reduction: 
+Test configuration changes in a safe workspace before applying them to production.
+
+4. Blast Radius Limit: 
+Mistakes in one workspace do not impact resources managed by another workspace.
+
+
+## Recommended Folder StructureWhen using Terraform workspaces
+==============================================================
+
+you maintain a single directory for your configuration files. Terraform automatically handles the separation of states in a hidden directory.
+
+my-terraform-project/
+├── .terraform/                # Generated: Initialized providers and modules
+├── .terraform.tfstate.d/      # Generated: Holds state files for each workspace
+│   ├── development/
+│   │   └── terraform.tfstate  # State file for Dev
+│   └── production/
+│       └── terraform.tfstate  # State file for Prod
+├── main.tf                    # Main resource definitions
+├── variables.tf               # Input variable declarations
+├── outputs.tf                 # Output variable definitions
+├── providers.tf               # Cloud provider configuration
+└── terraform.tfvars           # Default variable values
+
+Dynamic ConfigurationsYou can use the terraform.
+================================================
+
+workspace variable inside your code to dynamically change resource properties based on the active workspace.
+
+# Example: Adjusting instance size based on workspace
+resource "aws_instance" "server" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = terraform.workspace == "production" ? "t3.medium" : "t3.micro"
+
+  tags = {
+    Name        = "web-server"
+    Environment = terraform.workspace
+  }
+}
